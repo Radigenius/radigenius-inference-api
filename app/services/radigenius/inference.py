@@ -137,11 +137,16 @@ class RadiGenius:
                 min_p=request.min_p
             )
             generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            return generated_text.replace("assistant", "\n\nassistant").strip()
+            return cls._prepare_response(generated_text)
         except ModelNotInitializedException:
             raise
         except Exception as e:
             raise ModelInferenceException(str(e))
+        
+    @staticmethod
+    def _prepare_response(generated_text: str):
+        parts = generated_text.split("assistant\n\n")
+        return parts[1] if len(parts) > 1 else "No assistant response found"
 
     @classmethod
     def kill_model(cls):
