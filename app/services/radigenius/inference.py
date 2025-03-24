@@ -3,6 +3,8 @@ import torch
 import os
 from huggingface_hub import snapshot_download
 from unsloth import FastVisionModel
+from PIL import Image
+import requests
 
 
 from app.exceptions.model_exceptions import ModelInferenceException, ModelDownloadException, ModelNotInitializedException
@@ -87,7 +89,20 @@ class RadiGenius:
                 
             return local_dir
         except Exception as e:
-            raise ModelDownloadException(errors=str(e))
+            raise ModelDownloadException(str(e))
+
+
+    @staticmethod
+    def _create_template(content: str, attachment_count: int):
+
+        template = [
+            {"role": "user", "content": [
+                *[{"type": "image"} for _ in range(attachment_count)],
+                {"type": "text", "text": content}
+            ]}
+        ]
+
+        return template
 
     @classmethod
     @model_initialized_guard
@@ -97,27 +112,28 @@ class RadiGenius:
         If in mock mode, returns a simplified response based on the input.
         """
 
-        template = request.template
-
-        # find the first text content in the template
-        content = next((item.content for item in template if item.type == "text"), None)
+        prompt = request.prompt
 
         if cls.is_mock:
             # Create a mock response using a portion of the input content
-            mock_response = f"[MOCK RESPONSE] Echo of your prompt: '{content[:100]}...'"
+            mock_response = f"[MOCK RESPONSE] Echo of your prompt: '{prompt[:100]}...'"
             
             # Log the mock operation
-            logger.info(f"Mock RadiGenius used. Input length: {len(content)}")
+            logger.info(f"Mock RadiGenius used. Input length: {len(prompt)}")
             
             return mock_response
         
         try:
+            template = cls._create_template(prompt, len(request.attachments))
+            images = [Image.open(requests.get(url, stream=True).raw) for url in request.attachments]
+            
             input_text = cls.tokenizer.apply_chat_template(template, add_generation_prompt=True)
             inputs = cls.tokenizer(input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
             
             output_ids = cls.model.generate(
+                images,
                 **inputs,
-                max_new_tokens=request.max_tokens,
+                max_new_tokens=request.max_new_tokens,
                 temperature=request.temperature,
                 min_p=request.min_p
             )
@@ -126,7 +142,7 @@ class RadiGenius:
         except ModelNotInitializedException:
             raise
         except Exception as e:
-            raise ModelInferenceException(errors=e)
+            raise ModelInferenceException(str(e))
 
     @classmethod
     def kill_model(cls):

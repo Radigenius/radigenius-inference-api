@@ -20,4 +20,5 @@ class InferenceRequest(BaseModel):
     temperature: float = Field(..., description="Temperature for sampling")
     min_p: float = Field(..., description="Min probability for sampling")
     model: ModelTypes
-    template: List[Template]
+    prompt: str
+    attachments: List[str] # list of urls of images

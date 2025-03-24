@@ -23,7 +23,8 @@ def generate(request: InferenceRequest):
     - temperature: Controls randomness (higher = more random)
     - min_p: Minimum probability threshold for token selection
     - model: Model to use for generation
-    - template: Conversation template with text and/or images
+    - prompt: Prompt to generate a response from
+    - attachments: List of urls of images
     """
 
     radi_genius = RadiGenius()

@@ -1,4 +1,5 @@
 import torch
+import os
 
 # ======================================================================
 # INFERENCE-OPTIMIZED CONFIGURATION
@@ -35,7 +36,7 @@ PRODUCTION_CONFIG = {
     "dtype": torch.bfloat16,
     
     # Disable for inference (not needed, improves speed)
-    "use_gradient_checkpointing": "False",
+    "use_gradient_checkpointing": False,
     
     # Can use longer sequences for inference (fits in 24GB)
     "max_seq_length": 4096,
