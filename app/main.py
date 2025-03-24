@@ -78,7 +78,7 @@ def run_server(
         logger.info("Starting server (model will be initialized during startup)")
         typer.echo("Starting server (model will be initialized during startup)")
     
-    uvicorn.run("app.main:app", host=host, port=port, reload=True)
+    uvicorn.run("app.main:app", host=host, port=port, reload=os.getenv("DEBUG", False))
 
 if __name__ == "__main__":
     cli() 

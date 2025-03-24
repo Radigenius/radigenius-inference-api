@@ -128,10 +128,9 @@ class RadiGenius:
             images = [Image.open(requests.get(url, stream=True).raw) for url in request.attachments]
             
             input_text = cls.tokenizer.apply_chat_template(template, add_generation_prompt=True)
-            inputs = cls.tokenizer(input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
+            inputs = cls.tokenizer(images, input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
             
             output_ids = cls.model.generate(
-                images,
                 **inputs,
                 max_new_tokens=request.max_new_tokens,
                 temperature=request.temperature,
