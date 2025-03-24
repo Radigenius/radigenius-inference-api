@@ -34,7 +34,7 @@ def generate(request: InferenceRequest):
 
     if request.stream:
         return StreamingResponse(
-            radi_genius.stream_message(request),
+            radi_genius.send_message(request),
             media_type="text/event-stream"
         )
 
