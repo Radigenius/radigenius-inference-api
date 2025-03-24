@@ -20,6 +20,9 @@ var/
 .installed.cfg
 *.egg
 
+# Fastapi
+**/.locks/**
+
 # Virtual Environments
 venv/
 ENV/
@@ -61,3 +64,9 @@ docker-compose.override.yml
 
 # Local data
 data/ 
+
+# Model cache
+**/model_cache/**
+
+# Unsloth compiled cache
+**/unsloth_compiled_cache/**
