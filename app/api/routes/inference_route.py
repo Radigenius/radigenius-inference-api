@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from enum import Enum
+
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from app.dtos.inference_dto import InferenceRequest
 from app.services.radigenius.inference import RadiGenius
@@ -25,8 +27,15 @@ def generate(request: InferenceRequest):
     - model: Model to use for generation
     - prompt: Prompt to generate a response from
     - attachments: List of urls of images
+    - stream: Whether to stream the response
     """
 
     radi_genius = RadiGenius()
+
+    if request.stream:
+        return StreamingResponse(
+            radi_genius.stream_message(request),
+            media_type="text/event-stream"
+        )
 
     return radi_genius.send_message(request)

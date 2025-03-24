@@ -22,3 +22,4 @@ class InferenceRequest(BaseModel):
     model: ModelTypes
     prompt: str
     attachments: List[str] # list of urls of images
+    stream: bool = True

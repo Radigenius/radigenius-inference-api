@@ -103,6 +103,59 @@ class RadiGenius:
         ]
 
         return template
+    
+    def _send_message_mock(self, request: InferenceRequest):
+
+        prompt = request.prompt
+
+        # Create a mock response using a portion of the input content
+        mock_response = f"[MOCK RESPONSE] Echo of your prompt: '{prompt[:100]}...'"
+        
+        # Log the mock operation
+        logger.info(f"Mock RadiGenius used. Input length: {len(prompt)}")
+        
+        if request.stream:
+                # For mock streaming, split response into words and yield them one by one
+                def mock_stream():
+                    for word in mock_response.split():
+                        yield word + " "
+                return mock_stream()
+        
+        return mock_response
+
+    @classmethod
+    def _stream_output(cls, generation_kwargs: dict): 
+        from transformers import TextIteratorStreamer
+        from threading import Thread
+            
+        # Create a streamer
+        streamer = TextIteratorStreamer(cls.tokenizer, skip_special_tokens=True)
+
+        generation_kwargs["streamer"] = streamer
+        
+        # Start generation in a separate thread
+        thread = Thread(target=cls.model.generate, kwargs=generation_kwargs)
+        thread.start()
+        
+        # Create a generator to yield streamed output
+        def process_streaming_output():
+            collected = ""
+            # Skip content until we find the assistant's message
+            for new_text in streamer:
+                collected += new_text
+                if "assistant\n\n" in collected:
+                    # Found the start of assistant's message
+                    parts = collected.split("assistant\n\n")
+                    if len(parts) > 1:
+                        # Yield the beginning of assistant's message
+                        yield parts[1]
+                        break
+            
+            # Continue streaming the rest of the response
+            for new_text in streamer:
+                yield new_text
+        
+        return process_streaming_output()
 
     @classmethod
     @model_initialized_guard
@@ -115,13 +168,7 @@ class RadiGenius:
         prompt = request.prompt
 
         if cls.is_mock:
-            # Create a mock response using a portion of the input content
-            mock_response = f"[MOCK RESPONSE] Echo of your prompt: '{prompt[:100]}...'"
-            
-            # Log the mock operation
-            logger.info(f"Mock RadiGenius used. Input length: {len(prompt)}")
-            
-            return mock_response
+            return cls._send_message_mock(request)
         
         try:
             template = cls._create_template(prompt, len(request.attachments))
@@ -130,6 +177,17 @@ class RadiGenius:
             input_text = cls.tokenizer.apply_chat_template(template, add_generation_prompt=True)
             inputs = cls.tokenizer(images, input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
             
+            generation_kwargs = dict(
+                **inputs,
+                max_new_tokens=request.max_new_tokens,
+                temperature=request.temperature,
+                min_p=request.min_p,
+            )
+
+            if request.stream:
+                return cls._stream_output(generation_kwargs)
+
+            # Non-streaming mode (original behavior)
             output_ids = cls.model.generate(
                 **inputs,
                 max_new_tokens=request.max_new_tokens,
@@ -138,6 +196,7 @@ class RadiGenius:
             )
             generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
             return cls._prepare_response(generated_text)
+
         except ModelNotInitializedException:
             raise
         except Exception as e:
@@ -146,7 +205,11 @@ class RadiGenius:
     @staticmethod
     def _prepare_response(generated_text: str):
         parts = generated_text.split("assistant\n\n")
-        return parts[1] if len(parts) > 1 else "No assistant response found"
+
+        if len(parts) < 1:
+            raise ModelInferenceException("No assistant response found")
+
+        return parts[1]
 
     @classmethod
     def kill_model(cls):
