@@ -143,42 +143,29 @@ class RadiGenius:
         def process_streaming_output():
             """
             Process the streaming output from the model:
-            1. Discard everything until "assistant\n\n" is found
+            1. Discard everything until the LAST occurrence of "assistant\n\n" is found
             2. Stream all content after that marker
             3. Collect the complete output for logging
             """
             logger.info('Streaming output started')
             
-            # Variables to track state and output
+            # Collect all tokens initially
             buffer = ""
             assistant_output = ""
-            found_marker = False
             marker = "assistant\n\n"
             
-            # Process all tokens from the streamer
             for token in streamer:
-                if not found_marker:
-                    # Still looking for the assistant marker
-                    buffer += token
-                    
-                    if marker in buffer:
-                        # We found the marker - extract content after it
-                        _, after_marker = buffer.split(marker, 1)
-                        
-                        # Start collecting the cleaned output
-                        assistant_output = after_marker
-                        found_marker = True
-                        
-                        # Yield the first part of the actual output
-                        if after_marker:
-                            yield after_marker
+
+                buffer += token
+
+                if marker in buffer:
+                    _, after_marker = buffer.split(marker, 1)
+                    assistant_output += after_marker
+                    yield after_marker
                 else:
-                    # We've already found the marker, directly stream and collect
-                    assistant_output += token
-                    yield token
-            
-            # Log the complete output
-            logger.info(f'Streaming output finished. Complete assistant response: {assistant_output}')
+                    continue
+
+            logger.info(f'Streaming completed. Response length: {assistant_output} ')
         
         return process_streaming_output()
 
