@@ -23,38 +23,31 @@ def setup_logging():
     log_dir = os.getenv("LOG_DIR", "logs")
     pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
     
-    # Base log filename (will be rotated)
-    base_log_file = os.path.join(log_dir, "radigenius.log")
+    # Generate today's log filename directly
+    date_str = datetime.datetime.now().strftime("%m-%d-%Y")
+    log_file = os.path.join(log_dir, f"radigenius-log-{date_str}.txt")
     
-    # Custom namer function to generate daily filenames
-    def namer(default_name):
-        # Extract the date from the default name created by TimedRotatingFileHandler
-        date_str = datetime.datetime.now().strftime("%m-%d-%Y")
-        # Return our custom format
-        return os.path.join(log_dir, f"radigenius-log-{date_str}.txt")
+    # Create formatters and handlers separately
+    formatter = logging.Formatter(log_format)
     
-    # Create the time-based handler
-    file_handler = TimedRotatingFileHandler(
-        filename=base_log_file,
-        when="midnight",     # Rotate at midnight
-        interval=1,          # Every day
-        backupCount=30,      # Keep 30 days of logs
-        encoding="utf-8",
-        delay=False
-    )
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
     
-    # Set our custom namer function
-    file_handler.namer = namer
+    # File handler (simple FileHandler using today's date)
+    file_handler = logging.FileHandler(filename=log_file, encoding="utf-8", mode="a")
+    file_handler.setFormatter(formatter)
     
     # Configure root logger
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format=log_format,
-        handlers=[
-            logging.StreamHandler(),  # Console handler
-            file_handler,             # File handler with daily rotation
-        ]
-    )
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_level))
+    
+    # Remove any existing handlers and add our handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
     
     # Set levels for specific loggers if needed
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
@@ -63,8 +56,7 @@ def setup_logging():
     # Log at startup
     logger = logging.getLogger(__name__)
     logger.info(f"Logging initialized at {log_level} level")
-    today_log = namer("dummy")  # Get today's log filename
-    logger.info(f"Today's log file: {os.path.abspath(today_log)}")
+    logger.info(f"Log file: {os.path.abspath(log_file)}")
     return logger
 
 # Initialize logger
