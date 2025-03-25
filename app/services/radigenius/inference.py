@@ -160,6 +160,7 @@ class RadiGenius:
             
             # Continue streaming the rest of the response
             for new_text in streamer:
+                collected += new_text
                 yield new_text
 
             logger.info(f'streaming output finished successfully collected: {collected}')
@@ -195,7 +196,7 @@ class RadiGenius:
                 min_p=request.min_p,
             )
 
-            logger.info(f'generation kwargs: {generation_kwargs}')
+            logger.debug(f'generation kwargs: {generation_kwargs}')
 
             if request.stream:
                 return cls._stream_output(generation_kwargs)

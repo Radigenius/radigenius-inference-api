@@ -16,7 +16,7 @@ from app.services.radigenius.inference import RadiGenius
 
 # Configure logging
 def setup_logging():
-    log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     
     # Create logs directory if it doesn't exist
