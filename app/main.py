@@ -2,6 +2,9 @@ import os
 import typer
 import asyncio
 import logging
+import pathlib
+import datetime
+from logging.handlers import TimedRotatingFileHandler
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,7 +14,61 @@ from app.api.routes import inference_route
 from app.core.config import settings
 from app.services.radigenius.inference import RadiGenius
 
-logger = logging.getLogger(__name__)
+# Configure logging
+def setup_logging():
+    log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    
+    # Create logs directory if it doesn't exist
+    log_dir = os.getenv("LOG_DIR", "logs")
+    pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Base log filename (will be rotated)
+    base_log_file = os.path.join(log_dir, "radigenius.log")
+    
+    # Custom namer function to generate daily filenames
+    def namer(default_name):
+        # Extract the date from the default name created by TimedRotatingFileHandler
+        date_str = datetime.datetime.now().strftime("%m-%d-%Y")
+        # Return our custom format
+        return os.path.join(log_dir, f"radigenius-log-{date_str}.txt")
+    
+    # Create the time-based handler
+    file_handler = TimedRotatingFileHandler(
+        filename=base_log_file,
+        when="midnight",     # Rotate at midnight
+        interval=1,          # Every day
+        backupCount=30,      # Keep 30 days of logs
+        encoding="utf-8",
+        delay=False
+    )
+    
+    # Set our custom namer function
+    file_handler.namer = namer
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format=log_format,
+        handlers=[
+            logging.StreamHandler(),  # Console handler
+            file_handler,             # File handler with daily rotation
+        ]
+    )
+    
+    # Set levels for specific loggers if needed
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    
+    # Log at startup
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized at {log_level} level")
+    today_log = namer("dummy")  # Get today's log filename
+    logger.info(f"Today's log file: {os.path.abspath(today_log)}")
+    return logger
+
+# Initialize logger
+logger = setup_logging()
 
 # Create CLI app
 cli = typer.Typer()
@@ -19,10 +76,14 @@ cli = typer.Typer()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialization before startup (previously in @app.on_event("startup"))
+    logger.info("Initializing RadiGenius model...")
     instance = RadiGenius()
+    logger.info("RadiGenius model initialized successfully")
     yield
     # Cleanup on shutdown
+    logger.info("Shutting down RadiGenius model...")
     instance.kill_model()
+    logger.info("RadiGenius model shutdown complete")
 
 # Create FastAPI app with lifespan
 app = FastAPI(
@@ -46,6 +107,7 @@ app.include_router(inference_route.router, prefix="/api")
 
 @app.get("/")
 async def root():
+    logger.debug("Root endpoint accessed")
     return {"message": "Welcome to RadiGenius API"}
 
 # CLI Commands
@@ -73,12 +135,22 @@ def run_server(
     if skip_init:
         logger.info("Starting server with pre-initialized model")
         typer.echo("Starting server with pre-initialized model")
-        # You may want to modify the app startup event if skip_init is True
     else:
         logger.info("Starting server (model will be initialized during startup)")
         typer.echo("Starting server (model will be initialized during startup)")
     
-    uvicorn.run("app.main:app", host=host, port=port, reload=os.getenv("DEBUG", False))
+    # Configure uvicorn logging
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    
+    uvicorn.run(
+        "app.main:app", 
+        host=host, 
+        port=port, 
+        reload=os.getenv("DEBUG", "False").lower() == "true",
+        log_config=log_config
+    )
 
 if __name__ == "__main__":
     cli() 

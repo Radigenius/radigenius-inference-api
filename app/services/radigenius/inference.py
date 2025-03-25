@@ -39,13 +39,17 @@ class RadiGenius:
     def initialize_model(cls):
         """Initialize and return the base model and tokenizer."""
         config = get_config()
-        print('initializing model config: ', config)
+        
+        logger.info(f'initializing model with config: {config}')
         model, tokenizer = FastVisionModel.from_pretrained(**config)
-        print('initializing model for inference')
+        
+        logger.info('initializing model for inference')
         FastVisionModel.for_inference(model)
 
         cls.model = model
         cls.tokenizer = tokenizer
+
+        logger.info('model initialized')
 
     @classmethod
     def initialize_device(cls):
@@ -139,6 +143,9 @@ class RadiGenius:
         
         # Create a generator to yield streamed output
         def process_streaming_output():
+
+            logger.info('streaming output started')
+
             collected = ""
             # Skip content until we find the assistant's message
             for new_text in streamer:
@@ -154,6 +161,8 @@ class RadiGenius:
             # Continue streaming the rest of the response
             for new_text in streamer:
                 yield new_text
+
+            logger.info(f'streaming output finished successfully collected: {collected}')
         
         return process_streaming_output()
 
@@ -164,6 +173,8 @@ class RadiGenius:
         Send a message to the model and get a response.
         If in mock mode, returns a simplified response based on the input.
         """
+
+        logger.info(f'sending message with request: {request}')
 
         prompt = request.prompt
 
@@ -184,6 +195,8 @@ class RadiGenius:
                 min_p=request.min_p,
             )
 
+            logger.info(f'generation kwargs: {generation_kwargs}')
+
             if request.stream:
                 return cls._stream_output(generation_kwargs)
 
@@ -195,6 +208,9 @@ class RadiGenius:
                 min_p=request.min_p
             )
             generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            
+            logger.info(f'generated text: {generated_text}')
+            
             return cls._prepare_response(generated_text)
 
         except ModelNotInitializedException:
