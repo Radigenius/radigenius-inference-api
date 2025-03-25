@@ -23,3 +23,8 @@ class InferenceRequest(BaseModel):
     prompt: str
     attachments: List[str] # list of urls of images
     stream: bool = True
+
+
+class HealthCheckResponse(BaseModel):
+    is_healthy: bool
+    reason: str

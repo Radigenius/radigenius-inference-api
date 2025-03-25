@@ -3,7 +3,7 @@ from enum import Enum
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.dtos.inference_dto import InferenceRequest
+from app.dtos.inference_dto import InferenceRequest, HealthCheckResponse
 from app.services.radigenius.inference import RadiGenius
 router = APIRouter(
     prefix="/inference",
@@ -36,7 +36,7 @@ def generate(request: InferenceRequest):
     return radi_genius.send_message(request)
 
 
-@router.get("/healthy", response_model=dict)
+@router.get("/healthy", response_model=HealthCheckResponse)
 def healthy():
     is_healthy, reason = RadiGenius.is_healthy()
     return {"is_healthy": is_healthy, "reason": reason}
