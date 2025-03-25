@@ -36,6 +36,7 @@ def generate(request: InferenceRequest):
     return radi_genius.send_message(request)
 
 
-@router.get("/healthy", response_model=bool)
+@router.get("/healthy", response_model=dict)
 def healthy():
-    return RadiGenius.is_healthy()
+    is_healthy, reason = RadiGenius.is_healthy()
+    return {"is_healthy": is_healthy, "reason": reason}

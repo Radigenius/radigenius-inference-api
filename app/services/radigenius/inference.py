@@ -249,3 +249,20 @@ class RadiGenius:
         cls.tokenizer = None
         cls.device = None
         cls.is_mock = False
+
+    @classmethod
+    def is_healthy(cls):
+        reason = ""
+        if cls.model is None:
+            reason = "Model is not initialized"
+        elif cls.tokenizer is None:
+            reason = "Tokenizer is not initialized"
+        elif cls.device is None:
+            reason = "Device is not initialized"
+
+        if reason:
+            logger.error(f'RadiGenius is not healthy: {reason}')
+            return False, reason
+
+        logger.info("RadiGenius is healthy")
+        return True, "RadiGenius is healthy"
