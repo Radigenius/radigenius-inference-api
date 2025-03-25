@@ -11,11 +11,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-class ModelTypes(str, Enum):
-    RadiGenius = "RadiGenius"
-
-
-
 @router.post("/", response_model=str)
 def generate(request: InferenceRequest):
     """
@@ -39,3 +34,8 @@ def generate(request: InferenceRequest):
         )
 
     return radi_genius.send_message(request)
+
+
+@router.get("/healthy", response_model=bool)
+def healthy():
+    return RadiGenius.is_healthy()

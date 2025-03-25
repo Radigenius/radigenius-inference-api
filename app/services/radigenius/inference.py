@@ -134,36 +134,51 @@ class RadiGenius:
             
         # Create a streamer
         streamer = TextIteratorStreamer(cls.tokenizer, skip_special_tokens=True)
-
         generation_kwargs["streamer"] = streamer
         
         # Start generation in a separate thread
         thread = Thread(target=cls.model.generate, kwargs=generation_kwargs)
         thread.start()
         
-        # Create a generator to yield streamed output
         def process_streaming_output():
-
-            logger.info('streaming output started')
-
-            collected = ""
-            # Skip content until we find the assistant's message
-            for new_text in streamer:
-                collected += new_text
-                if "assistant\n\n" in collected:
-                    # Found the start of assistant's message
-                    parts = collected.split("assistant\n\n")
-                    if len(parts) > 1:
-                        # Yield the beginning of assistant's message
-                        yield parts[1]
-                        break
+            """
+            Process the streaming output from the model:
+            1. Discard everything until "assistant\n\n" is found
+            2. Stream all content after that marker
+            3. Collect the complete output for logging
+            """
+            logger.info('Streaming output started')
             
-            # Continue streaming the rest of the response
-            for new_text in streamer:
-                collected += new_text
-                yield new_text
-
-            logger.info(f'streaming output finished successfully collected: {collected}')
+            # Variables to track state and output
+            buffer = ""
+            assistant_output = ""
+            found_marker = False
+            marker = "assistant\n\n"
+            
+            # Process all tokens from the streamer
+            for token in streamer:
+                if not found_marker:
+                    # Still looking for the assistant marker
+                    buffer += token
+                    
+                    if marker in buffer:
+                        # We found the marker - extract content after it
+                        _, after_marker = buffer.split(marker, 1)
+                        
+                        # Start collecting the cleaned output
+                        assistant_output = after_marker
+                        found_marker = True
+                        
+                        # Yield the first part of the actual output
+                        if after_marker:
+                            yield after_marker
+                else:
+                    # We've already found the marker, directly stream and collect
+                    assistant_output += token
+                    yield token
+            
+            # Log the complete output
+            logger.info(f'Streaming output finished. Complete assistant response: {assistant_output}')
         
         return process_streaming_output()
 
