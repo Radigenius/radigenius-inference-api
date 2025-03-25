@@ -151,7 +151,7 @@ class RadiGenius:
             
             buffer = ""
             assistant_output = ""
-            marker = "image.assistant"
+            marker = "assistant"
             marker_found = False
             
             for token in streamer:
