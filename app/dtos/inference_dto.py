@@ -5,16 +5,18 @@ from app.enums.inference_enum import ModelTypes
 
 class ContentDto(BaseModel):
     type: Literal["text", "image"]
-    text: Optional[str] = ""
-    image: Optional[str] = ""
-    
+    text: Optional[str] = None
+    image: Optional[str] = None
+
     @validator('*', pre=True)
     def validate_content(cls, values):
         if 'type' in values:
-            if values['type'] == 'text' and not values.get('text'):
-                raise ValueError("text field is required when type is 'text'")
-            if values['type'] == 'image' and not values.get('image'):
-                raise ValueError("image field is required when type is 'image'")
+            if values['type'] == 'text':
+                if not values.get('text'):
+                    raise ValueError("text field is required when type is 'text'")
+            elif values['type'] == 'image':
+                if not values.get('image'):
+                    raise ValueError("image field is required when type is 'image'")
         return values
 
 class MessageDto(BaseModel):
