@@ -112,7 +112,7 @@ class RadiGenius:
         template: List[MessageDto] = []
         
         # Process conversation history
-        conversation_history = request.conversation_history.messages
+        conversation_history = request.conversation_history
         template = conversation_history.model_copy(deep=True)
         template.append(request.message)
         

@@ -12,11 +12,6 @@ class MessageDto(BaseModel):
     role: Literal["user", "assistant"]
     content: List[ContentDto]
 
-
-class ConversationHistoryDto(BaseModel):
-    messages: List[MessageDto]
-
-
 class ConfigsDto(BaseModel):
     max_new_tokens: int
     temperature: float = Field(..., description="Temperature for sampling")
@@ -34,7 +29,7 @@ class InferenceRequest(BaseModel):
     """
     
     configs: ConfigsDto
-    conversation_history: ConversationHistoryDto
+    conversation_history: List[MessageDto] = []
     message: MessageDto
 
 class HealthCheckResponse(BaseModel):
