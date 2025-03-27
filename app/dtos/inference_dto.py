@@ -1,5 +1,5 @@
 from typing import List, Union, Literal, Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.enums.inference_enum import ModelTypes
 
@@ -8,16 +8,23 @@ class ContentDto(BaseModel):
     text: Optional[str] = None
     image: Optional[str] = None
 
-    @validator('*', pre=True)
-    def validate_content(cls, values):
-        if 'type' in values:
-            if values['type'] == 'text':
-                if not values.get('text'):
-                    raise ValueError("text field is required when type is 'text'")
-            elif values['type'] == 'image':
-                if not values.get('image'):
-                    raise ValueError("image field is required when type is 'image'")
-        return values
+    @field_validator('type')
+    def validate_content_type(cls, v, info):
+        return v
+
+    @field_validator('text')
+    def validate_text(cls, v, info):
+        values = info.data
+        if values.get('type') == 'text' and not v:
+            raise ValueError("text field is required when type is 'text'")
+        return v
+
+    @field_validator('image')
+    def validate_image(cls, v, info):
+        values = info.data
+        if values.get('type') == 'image' and not v:
+            raise ValueError("image field is required when type is 'image'")
+        return v
 
 class MessageDto(BaseModel):
     role: Literal["user", "assistant"]
