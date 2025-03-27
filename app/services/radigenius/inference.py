@@ -1,3 +1,4 @@
+from typing import List
 import logging
 import torch
 import os
@@ -6,10 +7,9 @@ from unsloth import FastVisionModel
 from PIL import Image
 import requests
 
-
 from app.exceptions.model_exceptions import ModelInferenceException, ModelDownloadException, ModelNotInitializedException
 from app.decorators.model_initialized_guard import model_initialized_guard
-from app.dtos.inference_dto import InferenceRequest
+from app.dtos.inference_dto import InferenceRequest, MessageDto, ContentDto
 
 from .config import get_config
 
@@ -97,17 +97,34 @@ class RadiGenius:
 
 
     @staticmethod
-    def _create_template(content: str, attachment_count: int):
+    def _create_template(request: InferenceRequest) -> tuple[List[MessageDto], List[str]]:
+        """
+        Creates a template from the conversation history and current message.
+        Removes image URLs from the template but keeps the image type.
+        
+        Returns:
+            tuple: (template, image_urls)
+                - template: The conversation template with image URLs removed
+                - image_urls: List of all image URLs in order
+        """
+        image_urls = []
 
-        template = [
-            {"role": "user", "content": [
-                *[{"type": "image"} for _ in range(attachment_count)],
-                {"type": "text", "text": content}
-            ]}
-        ]
+        template: List[MessageDto] = []
+        
+        # Process conversation history
+        conversation_history = request.conversation_history.messages
+        template = conversation_history.model_copy(deep=True)
+        template.append(request.message)
+        
+        # Extract image URLs from conversation history
+        for message in template:
+            for i, content_item in enumerate(message.content):
+                if content_item.type == "image":
+                    image_urls.append(content_item.image)
+                    message.content[i] = {"type": "image"}
+        
+        return template, image_urls
 
-        return template
-    
     def _send_message_mock(self, request: InferenceRequest):
 
         prompt = request.prompt
@@ -181,39 +198,42 @@ class RadiGenius:
         Send a message to the model and get a response.
         If in mock mode, returns a simplified response based on the input.
         """
-
         logger.info(f'sending message with request: {request}')
-
-        prompt = request.prompt
 
         if cls.is_mock:
             return cls._send_message_mock(request)
         
         try:
-            template = cls._create_template(prompt, len(request.attachments))
-            images = [Image.open(requests.get(url, stream=True).raw) for url in request.attachments]
+            # Get template and image URLs
+            template, image_urls = cls._create_template(request)
             
+            # Load all images in the correct order
+            images = [Image.open(requests.get(url, stream=True).raw) for url in image_urls]
+            
+            # Apply the chat template
             input_text = cls.tokenizer.apply_chat_template(template, add_generation_prompt=True)
+            
+            # Encode both images and text
             inputs = cls.tokenizer(images, input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
             
             generation_kwargs = dict(
                 **inputs,
-                max_new_tokens=request.max_new_tokens,
-                temperature=request.temperature,
-                min_p=request.min_p,
+                max_new_tokens=request.configs.max_new_tokens,
+                temperature=request.configs.temperature,
+                min_p=request.configs.min_p,
             )
 
             logger.debug(f'generation kwargs: {generation_kwargs}')
 
-            if request.stream:
+            if request.configs.stream:
                 return cls._stream_output(generation_kwargs)
 
-            # Non-streaming mode (original behavior)
+            # Non-streaming mode
             output_ids = cls.model.generate(
                 **inputs,
-                max_new_tokens=request.max_new_tokens,
-                temperature=request.temperature,
-                min_p=request.min_p
+                max_new_tokens=request.configs.max_new_tokens,
+                temperature=request.configs.temperature,
+                min_p=request.configs.min_p
             )
             generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
             

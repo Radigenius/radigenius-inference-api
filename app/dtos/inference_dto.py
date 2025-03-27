@@ -3,27 +3,39 @@ from pydantic import BaseModel, Field
 
 from app.enums.inference_enum import ModelTypes
 
-class TextContent(BaseModel):
-    type: Literal["text"] = "text"
+class ContentDto(BaseModel):
+    type: Literal["text", "image"]
     text: str
+    image: str 
 
-class ImageContent(BaseModel):
-    type: Literal["image"] = "image"
-    image: str  # Base64 encoded image or URL
+class MessageDto(BaseModel):
+    role: Literal["user", "assistant"]
+    content: List[ContentDto]
 
-class Template(BaseModel):
-    role: str
-    content: List[Union[TextContent, ImageContent]]
 
-class InferenceRequest(BaseModel):
+class ConversationHistoryDto(BaseModel):
+    messages: List[MessageDto]
+
+
+class ConfigsDto(BaseModel):
     max_new_tokens: int
     temperature: float = Field(..., description="Temperature for sampling")
     min_p: float = Field(..., description="Min probability for sampling")
     model: ModelTypes
-    prompt: str
-    attachments: List[str] # list of urls of images
     stream: bool = True
 
+class InferenceRequest(BaseModel):
+    
+    """
+    Request body for inference
+    configs: ConfigsDto -> configs for the inference
+    conversation_history: ConversationHistoryDto -> list of messages between user and assistant
+    message: MessageDto -> new message from user
+    """
+    
+    configs: ConfigsDto
+    conversation_history: ConversationHistoryDto
+    message: MessageDto
 
 class HealthCheckResponse(BaseModel):
     is_healthy: bool
