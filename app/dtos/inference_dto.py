@@ -1,12 +1,21 @@
-from typing import List, Union, Literal
-from pydantic import BaseModel, Field
+from typing import List, Union, Literal, Optional
+from pydantic import BaseModel, Field, validator
 
 from app.enums.inference_enum import ModelTypes
 
 class ContentDto(BaseModel):
     type: Literal["text", "image"]
-    text: str
-    image: str 
+    text: Optional[str] = ""
+    image: Optional[str] = ""
+    
+    @validator('*', pre=True)
+    def validate_content(cls, values):
+        if 'type' in values:
+            if values['type'] == 'text' and not values.get('text'):
+                raise ValueError("text field is required when type is 'text'")
+            if values['type'] == 'image' and not values.get('image'):
+                raise ValueError("image field is required when type is 'image'")
+        return values
 
 class MessageDto(BaseModel):
     role: Literal["user", "assistant"]
