@@ -113,7 +113,9 @@ class RadiGenius:
         
         # Process conversation history
         conversation_history = request.conversation_history
-        template = conversation_history.model_copy(deep=True)
+        import copy
+        template = copy.deepcopy(conversation_history)
+        # template = conversation_history.model_copy(deep=True)
         template.append(request.message)
         
         # Extract image URLs from conversation history
