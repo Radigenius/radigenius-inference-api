@@ -15,19 +15,14 @@ router = APIRouter(
 def generate(request: InferenceRequest):
     """
     Generate a response using the provided parameters and template.
-    
-    - max_new_tokens: Maximum number of tokens to generate
-    - temperature: Controls randomness (higher = more random)
-    - min_p: Minimum probability threshold for token selection
-    - model: Model to use for generation
-    - prompt: Prompt to generate a response from
-    - attachments: List of urls of images
-    - stream: Whether to stream the response
+    configs: ConfigsDto -> configs for the inference
+    conversation_history: ConversationHistoryDto -> list of messages between user and assistant
+    message: MessageDto -> new message from user
     """
 
     radi_genius = RadiGenius()
 
-    if request.stream:
+    if request.configs.stream:
         return StreamingResponse(
             radi_genius.send_message(request),
             media_type="text/event-stream"
