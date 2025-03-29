@@ -223,8 +223,6 @@ class RadiGenius:
                 max_new_tokens=request.configs.max_new_tokens,
                 temperature=request.configs.temperature,
                 min_p=request.configs.min_p,
-                eos_token_id=cls.tokenizer.eos_token_id,  # Stops at end of response
-                pad_token_id=cls.tokenizer.pad_token_id  # Prevents unnecessary padding
             )
 
             logger.debug(f'generation kwargs: {generation_kwargs}')
@@ -243,8 +241,6 @@ class RadiGenius:
             
             logger.info(f'generated text: {generated_text}')
 
-            return generated_text
-            
             return cls._prepare_response(generated_text)
 
         except ModelNotInitializedException:
@@ -254,39 +250,12 @@ class RadiGenius:
         
     @staticmethod
     def _prepare_response(generated_text: str):
-        """Extract only the most recent assistant response from the generated text and format it properly."""
-        # Split by 'assistant' marker and take the last part
-        parts = generated_text.split("assistant")
-        
-        if len(parts) <= 1:
+        parts = generated_text.split("assistant\n\n")
+
+        if len(parts) < 1:
             raise ModelInferenceException("No assistant response found")
-        
-        # Get the last assistant response
-        last_response = parts[-1].strip()
-        
-        # Remove any leading newlines or formatting markers
-        last_response = last_response.lstrip('\n: ')
-        
-        # If there's a "user" marker after this, truncate to only include content before it
-        if "user" in last_response:
-            last_response = last_response.split("user")[0].strip()
-        
-        # Clean up the text formatting
-        # Replace multiple newlines with double newlines for paragraph breaks
-        last_response = re.sub(r'\n{3,}', '\n\n', last_response)
-        
-        # Fix markdown formatting issues
-        # Ensure proper spacing for headers
-        last_response = re.sub(r'(#+)([^ #])', r'\1 \2', last_response)
-        
-        # Properly format lists if broken
-        last_response = re.sub(r'(\n[*-]) ([^\n]+)(?=\n[*-])', r'\1 \2', last_response)
-        
-        formatted_output = last_response.strip()
 
-        logger.info(f'formatted output: {formatted_output}')
-
-        return formatted_output
+        return parts[-1]
 
     @classmethod
     def kill_model(cls):

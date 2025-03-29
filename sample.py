@@ -3,19 +3,31 @@ import json
 # from sseclient import SSEClient
 
 def test_streaming_api():
-    url = "https://fdluc8lct2ma63-8000.proxy.runpod.net/api/inference/"
+    url = "https://c67ohsp4aou6pc-8000.proxy.runpod.net/api/inference/"
     
     # Request payload with stream=True
     payload = {
-        "prompt": "You are an expert radiographer. Describe accurately what you see in this image.",
-        "max_new_tokens": 500,
-        "temperature": 0.7,
-        "min_p": 0.05,
-        "model": "RadiGenius",  # Replace with your actual model name
-        "stream": True,
-        "attachments": [
-            "https://cdn.stocken.ir/media/post/fd4653bf-fda7-4804-a3d3-d3376a3abfd3/test.webp"
-        ]  # Optional - Include if your API expects this field
+        "configs": {
+            "stream": True,
+            "max_new_tokens": 500,
+            "temperature": 0.7,
+            "min_p": 0.05,
+            "model": "RadiGenius",  # Replace with your actual model name
+        },
+        "conversation_history": [],
+        "message": {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "You are an expert radiographer. Describe accurately what you see in this image."
+                },
+                {
+                    "type": "image",
+                    "image": "https://cdn.stocken.ir/media/post/fd4653bf-fda7-4804-a3d3-d3376a3abfd3/test.webp"
+                }
+            ]
+        },
     }
     
     # Method 1: Using requests with streaming
