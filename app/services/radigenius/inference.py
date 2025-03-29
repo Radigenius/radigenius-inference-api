@@ -223,6 +223,8 @@ class RadiGenius:
                 max_new_tokens=request.configs.max_new_tokens,
                 temperature=request.configs.temperature,
                 min_p=request.configs.min_p,
+                eos_token_id=cls.tokenizer.eos_token_id,  # Stops at end of response
+                pad_token_id=cls.tokenizer.pad_token_id  # Prevents unnecessary padding
             )
 
             logger.debug(f'generation kwargs: {generation_kwargs}')
@@ -240,6 +242,8 @@ class RadiGenius:
             generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
             
             logger.info(f'generated text: {generated_text}')
+
+            return generated_text
             
             return cls._prepare_response(generated_text)
 
