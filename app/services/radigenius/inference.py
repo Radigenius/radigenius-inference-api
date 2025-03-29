@@ -7,6 +7,7 @@ from unsloth import FastVisionModel
 from PIL import Image
 import copy
 import requests
+import re
 
 from app.exceptions.model_exceptions import ModelInferenceException, ModelDownloadException, ModelNotInitializedException
 from app.decorators.model_initialized_guard import model_initialized_guard
@@ -249,7 +250,7 @@ class RadiGenius:
         
     @staticmethod
     def _prepare_response(generated_text: str):
-        """Extract only the most recent assistant response from the generated text."""
+        """Extract only the most recent assistant response from the generated text and format it properly."""
         # Split by 'assistant' marker and take the last part
         parts = generated_text.split("assistant")
         
@@ -265,8 +266,23 @@ class RadiGenius:
         # If there's a "user" marker after this, truncate to only include content before it
         if "user" in last_response:
             last_response = last_response.split("user")[0].strip()
-            
-        return last_response
+        
+        # Clean up the text formatting
+        # Replace multiple newlines with double newlines for paragraph breaks
+        last_response = re.sub(r'\n{3,}', '\n\n', last_response)
+        
+        # Fix markdown formatting issues
+        # Ensure proper spacing for headers
+        last_response = re.sub(r'(#+)([^ #])', r'\1 \2', last_response)
+        
+        # Properly format lists if broken
+        last_response = re.sub(r'(\n[*-]) ([^\n]+)(?=\n[*-])', r'\1 \2', last_response)
+        
+        formatted_output = last_response.strip()
+
+        logger.info(f'formatted output: {formatted_output}')
+
+        return formatted_output
 
     @classmethod
     def kill_model(cls):
