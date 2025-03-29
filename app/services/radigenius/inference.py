@@ -5,6 +5,7 @@ import os
 from huggingface_hub import snapshot_download
 from unsloth import FastVisionModel
 from PIL import Image
+import copy
 import requests
 
 from app.exceptions.model_exceptions import ModelInferenceException, ModelDownloadException, ModelNotInitializedException
@@ -113,9 +114,7 @@ class RadiGenius:
         
         # Process conversation history
         conversation_history = request.conversation_history
-        import copy
         template = copy.deepcopy(conversation_history)
-        # template = conversation_history.model_copy(deep=True)
         template.append(request.message)
         
         # Extract image URLs from conversation history
@@ -137,7 +136,7 @@ class RadiGenius:
         # Log the mock operation
         logger.info(f"Mock RadiGenius used. Input length: {len(prompt)}")
         
-        if request.stream:
+        if request.config.stream:
                 # For mock streaming, split response into words and yield them one by one
                 def mock_stream():
                     for word in mock_response.split():
@@ -250,12 +249,24 @@ class RadiGenius:
         
     @staticmethod
     def _prepare_response(generated_text: str):
-        parts = generated_text.split("assistant\n\n")
-
-        if len(parts) < 1:
+        """Extract only the most recent assistant response from the generated text."""
+        # Split by 'assistant' marker and take the last part
+        parts = generated_text.split("assistant")
+        
+        if len(parts) <= 1:
             raise ModelInferenceException("No assistant response found")
-
-        return parts[1]
+        
+        # Get the last assistant response
+        last_response = parts[-1].strip()
+        
+        # Remove any leading newlines or formatting markers
+        last_response = last_response.lstrip('\n: ')
+        
+        # If there's a "user" marker after this, truncate to only include content before it
+        if "user" in last_response:
+            last_response = last_response.split("user")[0].strip()
+            
+        return last_response
 
     @classmethod
     def kill_model(cls):
