@@ -243,8 +243,6 @@ class RadiGenius:
 
             return cls._prepare_response(generated_text)
 
-        except ModelNotInitializedException:
-            raise
         except Exception as e:
             raise ModelInferenceException(str(e))
         

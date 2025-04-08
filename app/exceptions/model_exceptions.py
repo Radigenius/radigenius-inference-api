@@ -1,24 +1,32 @@
+from app.exceptions.base import BaseException
 
-class ModelNotInitializedException(Exception):
+class ModelNotInitializedException(BaseException):
     """
     Exception raised when the model is not initialized.
     """
-    def __init__(self, message="Model is not initialized"):
-        self.message = message
-        super().__init__(self.message)
+    def __init__(self, errors=[]):
+        self.message = "Model is not initialized"
+        self.code = 500
+        self.errors = errors
+        self.key = "model_not_initialized_exception"
 
-class ModelInferenceException(Exception):
+class ModelInferenceException(BaseException):
     """
     Exception raised when the model inference fails.
     """
-    def __init__(self, message="Model inference failed"):
-        self.message = message
-        super().__init__(self.message)
+    def __init__(self, errors=[]):
+        self.message = "Model inference failed"
+        self.code = 500
+        self.errors = errors
+        self.key = "model_inference_exception"
 
-class ModelDownloadException(Exception):
+
+class ModelDownloadException(BaseException):
     """
     Exception raised when the model download fails.
     """
-    def __init__(self, message="Model download failed"):
-        self.message = message
-        super().__init__(self.message)
+    def __init__(self, errors=[]):
+        self.message = "Model download failed"
+        self.code = 500
+        self.errors = errors
+        self.key = "model_download_exception"

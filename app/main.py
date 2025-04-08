@@ -4,7 +4,6 @@ import asyncio
 import logging
 import pathlib
 import datetime
-from logging.handlers import TimedRotatingFileHandler
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import inference_route
 from app.core.config import settings
 from app.services.radigenius.inference import RadiGenius
+from app.exceptions.base import BaseException
+from app.exceptions.exception_handlers import custom_exception_handler
+
 
 # Configure logging
 def setup_logging():
@@ -96,6 +98,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(inference_route.router, prefix="/api")
+
+# Add exception handlers
+app.add_exception_handler(BaseException, custom_exception_handler)
 
 @app.get("/")
 async def root():
