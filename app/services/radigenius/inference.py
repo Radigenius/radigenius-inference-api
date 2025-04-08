@@ -9,7 +9,7 @@ import copy
 import requests
 import re
 
-from app.exceptions.model_exceptions import ModelInferenceException, ModelDownloadException, ModelNotInitializedException
+from app.exceptions.model_exceptions import ModelInferenceException, ModelDownloadException
 from app.decorators.model_initialized_guard import model_initialized_guard
 from app.dtos.inference_dto import InferenceRequest, MessageDto, ContentDto
 
@@ -95,7 +95,7 @@ class RadiGenius:
                 
             return local_dir
         except Exception as e:
-            raise ModelDownloadException(str(e))
+            raise ModelDownloadException(errors=[str(e)])
 
 
     @staticmethod
@@ -244,14 +244,14 @@ class RadiGenius:
             return cls._prepare_response(generated_text)
 
         except Exception as e:
-            raise ModelInferenceException(str(e))
+            raise ModelInferenceException(errors=[str(e)])
         
     @staticmethod
     def _prepare_response(generated_text: str):
         parts = generated_text.split("assistant\n\n")
 
         if len(parts) < 1:
-            raise ModelInferenceException("No assistant response found")
+            raise ModelInferenceException(errors=["No assistant response found"])
 
         return parts[-1]
 
