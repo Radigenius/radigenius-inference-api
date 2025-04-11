@@ -212,7 +212,12 @@ class RadiGenius:
                 add_generation_prompt=True,
                 truncation_strategy="last_assistant_turn_only"
             )
-            
+
+            logger.info("template: ", template)
+            logger.info("--------------------------------")
+            logger.info("input_text: ", input_text)
+            logger.info("--------------------------------")
+
             # Encode both images and text
             inputs = cls.tokenizer(images, input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
             
