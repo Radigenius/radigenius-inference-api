@@ -237,11 +237,17 @@ class RadiGenius:
                 temperature=request.configs.temperature,
                 min_p=request.configs.min_p
             )
-            generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            
-            logger.info(f'generated text: {generated_text}')
 
-            return cls._prepare_response(generated_text)
+            input_length = inputs["input_ids"].shape[1]
+            new_tokens = output_ids[0][input_length:]
+            generated_text = cls.tokenizer.decode(new_tokens, skip_special_tokens=True)
+
+            logger.debug("input_length: ", input_length)
+            
+            # generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            # logger.info(f'generated text: {generated_text}')
+
+            logger.info(f'generated text: {generated_text}')
 
         except Exception as e:
             raise ModelInferenceException(errors=[str(e)])
