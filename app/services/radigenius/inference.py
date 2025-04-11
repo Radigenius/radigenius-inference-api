@@ -152,7 +152,12 @@ class RadiGenius:
         from threading import Thread
             
         # Create a streamer
-        streamer = TextIteratorStreamer(cls.tokenizer, skip_special_tokens=True)
+        streamer = TextIteratorStreamer(
+            tokenizer=cls.tokenizer,
+            skip_prompt=True,  # This skips everything before input_length
+            skip_special_tokens=True
+        )
+        
         generation_kwargs["streamer"] = streamer
         
         # Start generation in a separate thread
@@ -163,25 +168,12 @@ class RadiGenius:
             logger.info('Streaming output started')
             
             assistant_output = ""
-            buffer = ""
-
-            for token in streamer:
-                assistant_output += token
-                buffer += token
-                
-                # When we have complete words (space-separated), yield them
-                if ' ' in buffer:
-                    words = buffer.split(' ')
-                    # Keep the last incomplete word in the buffer
-                    buffer = words[-1]
-                    # Yield complete words
-                    for word in words[:-1]:
-                        yield word + ' '
             
-            # Yield any remaining content in the buffer
-            if buffer:
-                yield buffer
-                
+            # Stream generated text
+            for new_text in streamer:
+                assistant_output += new_text
+                yield new_text
+                        
             logger.info(f'Streaming completed. Response: {assistant_output}')
         
         return process_streaming_output()
@@ -240,22 +232,17 @@ class RadiGenius:
                 temperature=request.configs.temperature,
                 min_p=request.configs.min_p
             )
-            generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            
-            logger.info(f'generated text: {generated_text}')
 
-            print("***************DEBUG***************")
             input_length = inputs["input_ids"].shape[1]
-            print("input_length: ", input_length)
             new_tokens = output_ids[0][input_length:]
-            print("new_tokens: ", new_tokens)
-            new_generated_text = cls.tokenizer.decode(new_tokens, skip_special_tokens=True)
-            print("new_generated_text: ", new_generated_text)
-            print("***************DEBUG***************")
+            generated_text = cls.tokenizer.decode(new_tokens, skip_special_tokens=True)
 
-            # Since we're using truncation_strategy="last_assistant_turn_only",
-            # the generated text should only contain the assistant's new response
-            return generated_text
+            logger.debug("input_length: ", input_length)
+            
+            # generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            # logger.info(f'generated text: {generated_text}')
+
+            logger.info(f'generated text: {generated_text}')
 
         except Exception as e:
             raise ModelInferenceException(errors=[str(e)])
