@@ -163,10 +163,24 @@ class RadiGenius:
             logger.info('Streaming output started')
             
             assistant_output = ""
+            buffer = ""
 
             for token in streamer:
                 assistant_output += token
-                yield token
+                buffer += token
+                
+                # When we have complete words (space-separated), yield them
+                if ' ' in buffer:
+                    words = buffer.split(' ')
+                    # Keep the last incomplete word in the buffer
+                    buffer = words[-1]
+                    # Yield complete words
+                    for word in words[:-1]:
+                        yield word + ' '
+            
+            # Yield any remaining content in the buffer
+            if buffer:
+                yield buffer
                 
             logger.info(f'Streaming completed. Response: {assistant_output}')
         
