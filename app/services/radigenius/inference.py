@@ -244,6 +244,15 @@ class RadiGenius:
             
             logger.info(f'generated text: {generated_text}')
 
+            print("***************DEBUG***************")
+            input_length = inputs["input_ids"].shape[1]
+            print("input_length: ", input_length)
+            new_tokens = output_ids[0][input_length:]
+            print("new_tokens: ", new_tokens)
+            new_generated_text = cls.tokenizer.decode(new_tokens, skip_special_tokens=True)
+            print("new_generated_text: ", new_generated_text)
+            print("***************DEBUG***************")
+
             # Since we're using truncation_strategy="last_assistant_turn_only",
             # the generated text should only contain the assistant's new response
             return generated_text
