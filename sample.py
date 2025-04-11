@@ -3,7 +3,7 @@ import json
 # from sseclient import SSEClient
 
 def test_streaming_api():
-    url = "https://c67ohsp4aou6pc-8000.proxy.runpod.net/api/inference/"
+    url = "https://xp1stw4waeqonr-8000.proxy.runpod.net/api/inference/"
     
     # Request payload with stream=True
     payload = {
@@ -24,7 +24,7 @@ def test_streaming_api():
                 },
                 {
                     "type": "image",
-                    "image": "https://cdn.stocken.ir/media/post/fd4653bf-fda7-4804-a3d3-d3376a3abfd3/test.webp"
+                    "image": "https://api-radigenius.bestudios.dev/media/message/pending/photo_2025-03-29_21-26-30.webp"
                 }
             ]
         },
@@ -41,6 +41,7 @@ def test_streaming_api():
                     if data.startswith('data: '):
                         data = data[6:]
                     print(data, end='', flush=True)
+                    print("--------------------------------")
         else:
             print(f"Error: {response.status_code}")
             print(response.text)

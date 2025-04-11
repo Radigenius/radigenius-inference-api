@@ -205,8 +205,13 @@ class RadiGenius:
             # Load all images in the correct order
             images = [Image.open(requests.get(url, stream=True).raw) for url in image_urls]
             
-            # Apply the chat template
-            input_text = cls.tokenizer.apply_chat_template(template, add_generation_prompt=True)
+            # Apply the chat template but with truncation_strategy="last_assistant_turn_only"
+            # This tells the tokenizer to format the prompt to only generate the new assistant message
+            input_text = cls.tokenizer.apply_chat_template(
+                template, 
+                add_generation_prompt=True,
+                truncation_strategy="last_assistant_turn_only"
+            )
             
             # Encode both images and text
             inputs = cls.tokenizer(images, input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
@@ -234,7 +239,9 @@ class RadiGenius:
             
             logger.info(f'generated text: {generated_text}')
 
-            return cls._prepare_response(generated_text)
+            # Since we're using truncation_strategy="last_assistant_turn_only",
+            # the generated text should only contain the assistant's new response
+            return generated_text
 
         except Exception as e:
             raise ModelInferenceException(errors=[str(e)])
