@@ -152,7 +152,12 @@ class RadiGenius:
         from threading import Thread
             
         # Create a streamer
-        streamer = TextIteratorStreamer(cls.tokenizer, skip_special_tokens=True)
+        streamer = TextIteratorStreamer(
+            tokenizer=cls.tokenizer,
+            skip_prompt=True,  # This skips everything before input_length
+            skip_special_tokens=True
+        )
+        
         generation_kwargs["streamer"] = streamer
         
         # Start generation in a separate thread
@@ -160,36 +165,16 @@ class RadiGenius:
         thread.start()
         
         def process_streaming_output():
-            """
-            Process the streaming output from the model:
-            1. Discard everything until the First occurrence of "assistant\n\n" is found
-            2. Stream all content after that marker
-            3. Collect the complete output for logging
-            """
             logger.info('Streaming output started')
             
-            buffer = ""
             assistant_output = ""
-            marker = "assistant"
-            marker_found = False
             
-            for token in streamer:
-                buffer += token
-                
-                # Check if we have the marker in our buffer
-                if marker in buffer and not marker_found:
-                    # Found the marker for the first time
-                    marker_found = True
-                    # Use split to find the first occurrence
-                    _, after_marker = buffer.split(marker, 1)
-                    assistant_output = after_marker
-                    yield after_marker
-                elif marker_found:
-                    # Marker already found, directly stream the new token
-                    assistant_output += token
-                    yield token
-                
-            logger.info(f'Streaming completed. Response length: {len(assistant_output)}')
+            # Stream generated text
+            for new_text in streamer:
+                assistant_output += new_text
+                yield new_text
+                        
+            logger.info(f'Streaming completed. Response: {assistant_output}')
         
         return process_streaming_output()
 
