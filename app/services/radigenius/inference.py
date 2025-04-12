@@ -155,6 +155,8 @@ class RadiGenius:
         from transformers import TextIteratorStreamer
         from threading import Thread
 
+        global streamer, thread
+        
         # Create streamer and attach to generation kwargs
         streamer = TextIteratorStreamer(
             tokenizer=cls.tokenizer,
@@ -168,6 +170,7 @@ class RadiGenius:
         thread.start()
 
         def process_streaming_output():
+            global streamer, thread
             logger.info('Streaming output started')
             assistant_output = ""
 
