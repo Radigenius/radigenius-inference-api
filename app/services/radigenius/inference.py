@@ -147,35 +147,44 @@ class RadiGenius:
         return mock_response
 
     @classmethod
-    def _stream_output(cls, generation_kwargs: dict): 
+    def _stream_output(cls, generation_kwargs: dict):
+        """
+        Handles streaming output from the model using a TextIteratorStreamer.
+        Yields chunks of generated text as they become available.
+        """
         from transformers import TextIteratorStreamer
         from threading import Thread
-            
-        # Create a streamer
+
+        # Create streamer and attach to generation kwargs
         streamer = TextIteratorStreamer(
             tokenizer=cls.tokenizer,
-            skip_prompt=True,  # This skips everything before input_length
+            skip_prompt=True,
             skip_special_tokens=True
         )
-        
         generation_kwargs["streamer"] = streamer
-        
+
         # Start generation in a separate thread
         thread = Thread(target=cls.model.generate, kwargs=generation_kwargs)
         thread.start()
-        
+
         def process_streaming_output():
             logger.info('Streaming output started')
-            
             assistant_output = ""
-            
-            # Stream generated text
-            for new_text in streamer:
-                assistant_output += new_text
-                yield new_text
-                        
-            logger.info(f'Streaming completed. Response: {assistant_output}')
-        
+
+            try:
+                for new_text in streamer:
+                    if new_text.strip():
+                        assistant_output += new_text
+                        yield f"{new_text}\n\n"
+            finally:
+                logger.info(f'Streaming completed. Response: {assistant_output}')
+                thread.join()
+                generation_kwargs.pop("streamer", None)
+                del streamer
+                del thread
+                torch.cuda.empty_cache()
+                logger.info('Streaming output cleanup completed')
+
         return process_streaming_output()
 
     @classmethod
@@ -183,60 +192,65 @@ class RadiGenius:
     def send_message(cls, request: InferenceRequest):
         """
         Send a message to the model and get a response.
-        If in mock mode, returns a simplified response based on the input.
+        Supports streaming and non-streaming inference.
         """
         logger.info(f'sending message with request: {request}')
 
         if cls.is_mock:
             return cls._send_message_mock(request)
-        
+
         try:
-            # Get template and image URLs
+            # Create the chat template and extract image URLs
             template, image_urls = cls._create_template(request)
-            
-            # Load all images in the correct order
+
+            # Load images in correct order
             images = [Image.open(requests.get(url, stream=True).raw) for url in image_urls]
-            
-            # Apply the chat template
+
+            # Format the input prompt
             input_text = cls.tokenizer.apply_chat_template(template, add_generation_prompt=True)
-            
-            # Encode both images and text
-            inputs = cls.tokenizer(images, input_text, add_special_tokens=False, return_tensors="pt").to(cls.device)
-            
-            generation_kwargs = dict(
-                **inputs,
+
+            # Tokenize both images and text
+            inputs = cls.tokenizer(
+                images,
+                input_text,
+                add_special_tokens=False,
+                return_tensors="pt"
+            ).to(cls.device)
+
+            # Common generation parameters
+            common_kwargs = dict(
                 max_new_tokens=request.configs.max_new_tokens,
                 temperature=request.configs.temperature,
                 min_p=request.configs.min_p,
             )
 
-            logger.debug(f'generation kwargs: {generation_kwargs}')
-
+            # If streaming is enabled
             if request.configs.stream:
-                return cls._stream_output(generation_kwargs)
+                return cls._stream_output({**inputs, **common_kwargs})
 
-            # Non-streaming mode
-            output_ids = cls.model.generate(
-                **inputs,
-                max_new_tokens=request.configs.max_new_tokens,
-                temperature=request.configs.temperature,
-                min_p=request.configs.min_p
-            )
+            # Generate output (non-streaming)
+            output_ids = cls.model.generate(**inputs, **common_kwargs)
 
+            # Extract newly generated tokens
             input_length = inputs["input_ids"].shape[1]
             new_tokens = output_ids[0][input_length:]
             generated_text = cls.tokenizer.decode(new_tokens, skip_special_tokens=True)
 
-            logger.debug("input_length: ", input_length)
-            
-            # generated_text = cls.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            # logger.info(f'generated text: {generated_text}')
-
             logger.info(f'generated text: {generated_text}')
+            return generated_text
 
         except Exception as e:
             raise ModelInferenceException(errors=[str(e)])
-        
+
+        finally:
+            for var in [
+                "inputs", "output_ids", "new_tokens",
+                "generated_text", "template", "image_urls", "images"
+            ]:
+                if var in locals():
+                    del locals()[var]
+            torch.cuda.empty_cache()
+            logger.info('Inference cleanup completed')
     @staticmethod
     def _prepare_response(generated_text: str):
         parts = generated_text.split("assistant\n\n")
