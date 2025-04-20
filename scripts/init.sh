@@ -20,14 +20,6 @@ sudo apt-get install virtualenv -y
 echo "Creating virtualenv..."
 python3 -m venv venv
 
-# activating the virtualenv
-echo "Activating the virtualenv..."
-source venv/bin/activate
-
-# installing the dependencies
-echo "Installing the dependencies..."
-pip install -r requirements.txt
-
-# running the server
-echo "Running the server..."
-python -m app.main run-server
+# call Run.sh
+echo "Calling Run.sh..."
+./scripts/run.sh
