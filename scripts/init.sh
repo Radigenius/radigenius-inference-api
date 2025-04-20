@@ -1,20 +1,20 @@
-cd /workspace/
+# cd /workspace/
 
-# Clone the repository
-echo "Cloning the repository..."
-git clone git@github.com:Radigenius/radigenius-inference-api.git
+# # Clone the repository
+# echo "Cloning the repository..."
+# git clone git@github.com:Radigenius/radigenius-inference-api.git
 
-cd radigenius-inference-api
+cd /workspace/radigenius-inference-api
 
 # updating the os
 echo "Updating the os..."
-sudo apt-get update
-sudo apt-get upgrade -y
+apt-get update
+apt-get upgrade -y
 
 
 # installing virtualenv
 echo "Installing virtualenv..."
-sudo apt-get install virtualenv -y
+apt-get install virtualenv -y
 
 # creating virtualenv
 echo "Creating virtualenv..."
