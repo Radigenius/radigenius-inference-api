@@ -22,4 +22,4 @@ python3 -m venv venv
 
 # call Run.sh
 echo "Calling Run.sh..."
-./scripts/run.sh
+sh ./scripts/run.sh
